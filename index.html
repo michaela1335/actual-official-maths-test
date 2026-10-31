@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NZ Interactive Mathematics Assessment Engine</title>
+  <style>
+    :root {
+      --primary: #0f4c81;
+      --primary-light: #e8f0fe;
+      --secondary: #107c41;
+      --accent: #d93025;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #202124;
+      --border: #dadce0;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 20px; }
+    .container { max-width: 920px; margin: 0 auto; background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px; min-height: 88vh; display: flex; flex-direction: column; justify-content: space-between; }
+    
+    header { border-bottom: 2px solid var(--primary-light); padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .logo-area { display: flex; align-items: center; gap: 12px; }
+    .logo-badge { background: var(--primary); color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; }
+    h1 { font-size: 1.35rem; color: var(--primary); }
+    .timer-badge { background: #fff3cd; color: #856404; padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; }
+
+    /* Progress Indicator */
+    .progress-container { margin-bottom: 24px; }
+    .progress-info { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 600; color: #5f6368; margin-bottom: 8px; }
+    .progress-bar-bg { background: #e0e0e0; height: 10px; border-radius: 5px; overflow: hidden; }
+    .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.3s ease; }
+
+    /* Question Card */
+    .question-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; }
+    .q-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .q-number { font-weight: 700; color: var(--primary); font-size: 1.1rem; }
+    .q-strand { background: var(--primary-light); color: var(--primary); padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+    .q-prompt { font-size: 1.1rem; margin-bottom: 20px; font-weight: 500; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .audio-btn { background: #f1f3f4; border: none; border-radius: 50%; width: 38px; height: 38px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
+    .audio-btn:hover { background: #e8eaed; }
+
+    /* Manipulative Canvas */
+    .canvas-box { background: #fdfdfd; border: 1px solid #e0e0e0; border-radius: 8px; padding: 18px; margin-bottom: 20px; text-align: center; overflow-x: auto; }
+    svg { max-width: 100%; height: auto; user-select: none; }
+    
+    .grid-shape-selectable { cursor: pointer; stroke: #333; stroke-width: 2; transition: all 0.2s; }
+    .grid-shape-selectable:hover { opacity: 0.85; filter: brightness(0.95); }
+    .grid-shape-selectable.selected { stroke: #d93025; stroke-width: 4; fill: #ffecb3 !important; }
+
+    /* Answer Options */
+    .options-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .option-btn { background: white; border: 2px solid var(--border); border-radius: 8px; padding: 14px 18px; font-size: 1rem; text-align: left; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px; }
+    .option-btn:hover { border-color: var(--primary); background: var(--primary-light); }
+    .option-btn.selected { border-color: var(--primary); background: var(--primary-light); font-weight: 600; }
+    .option-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .option-btn.selected .option-radio { border-color: var(--primary); background: var(--primary); }
+    .option-btn.selected .option-radio::after { content: ''; width: 8px; height: 8px; background: white; border-radius: 50%; }
+
+    /* Controls */
+    .controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .btn { padding: 12px 24px; border-radius: 8px; border: none; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+    .btn-secondary { background: #f1f3f4; color: var(--text); }
+    .btn-secondary:hover { background: #e8eaed; }
+    .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: #0b3c66; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; background: #829ab1; }
+    .btn-submit { background: var(--secondary); color: white; }
+    .btn-submit:hover { background: #0c6334; }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; background: #85b898; }
+
+    .warning-msg { color: var(--accent); font-size: 0.85rem; font-weight: 600; margin-top: 8px; display: none; }
+
+    /* Registration Screen */
+    .registration-box { max-width: 480px; margin: 30px auto; background: white; border: 1px solid var(--border); padding: 32px; border-radius: var(--radius); box-shadow: var(--shadow); }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 8px; }
+    .form-control { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
+    .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+
+    /* Diagnostic Report */
+    .report-card { background: white; padding: 24px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 24px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0; }
+    .metric-card { background: var(--bg); padding: 16px; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
+    .metric-value { font-size: 2rem; font-weight: 800; color: var(--primary); margin: 4px 0; }
+    .metric-label { font-size: 0.85rem; color: #5f6368; font-weight: 600; text-transform: uppercase; }
+    .strand-row { margin-bottom: 12px; }
+    .strand-info { display: flex; justify-content: space-between; font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+    .strand-bar-bg { background: var(--border); height: 10px; border-radius: 5px; overflow: hidden; }
+    .strand-bar-fill { background: var(--secondary); height: 100%; width: 0%; transition: width 0.8s ease; }
+
+    .review-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; }
+    .review-table th, .review-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    .review-table th { background: #f1f3f4; font-weight: 600; }
+    .badge-correct { color: var(--secondary); font-weight: 700; }
+    .badge-incorrect { color: var(--accent); font-weight: 700; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo-area">
+      <div class="logo-badge">NZ MATH</div>
+      <h1>Mathematics Assessment Engine</h1>
+    </div>
+    <div id="header-meta" class="hidden" style="display:flex; gap:12px; align-items:center;">
+      <div class="timer-badge">⏱️ <span id="timer-display">00:00</span></div>
+      <div id="student-tag" style="font-weight:600; color: var(--primary);"></div>
+    </div>
+  </header>
+
+  <!-- SCREEN 1: REGISTRATION (Year 7 & Year 8 Selection Only) -->
+  <div id="registration-screen">
+    <div class="registration-box">
+      <h2 style="color:var(--primary); margin-bottom:8px;">Student Registration</h2>
+      <p style="color:#5f6368; font-size:0.9rem; margin-bottom:24px;">Complete your details to start the 30-question mathematics assessment (Year 7 & Year 8).</p>
+      
+      <form id="reg-form">
+        <div class="form-group">
+          <label for="student-name">Full Student Name</label>
+          <input type="text" id="student-name" class="form-control" placeholder="e.g., Aroha Tīmene" required>
+        </div>
+        <div class="form-group">
+          <label for="year-level">Year Level</label>
+          <select id="year-level" class="form-control" required>
+            <option value="">Select Year Level...</option>
+            <option value="Year 7">Year 7</option>
+            <option value="Year 8">Year 8</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="session-code">Assessment Room ID</label>
+          <input type="text" id="session-code" class="form-control" value="NZ-MATH-30Q" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px;">Start Mathematics Assessment →</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: ASSESSMENT ENGINE (Strict Sequential Flow - Cannot Skip Questions) -->
+  <div id="assessment-screen" class="hidden">
+    <div class="progress-container">
+      <div class="progress-info">
+        <span id="progress-text">Question 1 of 30</span>
+        <span id="progress-pct-text">0% Complete</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+    </div>
+
+    <div class="question-card">
+      <div class="q-header">
+        <span class="q-number" id="q-number-label">Question 1 of 30</span>
+        <span class="q-strand" id="q-strand-label">Number & Algebra</span>
+      </div>
+
+      <div class="q-prompt">
+        <span id="q-prompt-text">Loading question prompt...</span>
+        <button class="audio-btn" id="btn-read-aloud" title="Read Aloud">🔊</button>
+      </div>
+
+      <!-- Visual Manipulative Canvas -->
+      <div class="canvas-box" id="canvas-container"></div>
+
+      <!-- Multiple Choice Options -->
+      <div class="options-grid" id="options-container"></div>
+      <div class="warning-msg" id="warning-msg">⚠️ Please select an answer before proceeding.</div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-secondary" id="btn-prev">← Previous</button>
+      <button class="btn btn-primary" id="btn-next" disabled>Next Question →</button>
+      <button class="btn btn-submit hidden" id="btn-submit" disabled>Submit Assessment ✔</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: DIAGNOSTIC REPORT -->
+  <div id="report-screen" class="hidden">
+    <div class="report-card">
+      <h2 style="color:var(--primary); margin-bottom:4px;">Diagnostic Performance Report</h2>
+      <p style="color:#5f6368; font-size:0.9rem;">Curriculum achievement breakdown and item-by-item diagnostic analysis.</p>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Overall Score</div>
+          <div class="metric-value" id="res-score-pct">0%</div>
+          <div style="font-size:0.85rem; color:#5f6368;" id="res-score-raw">0 / 30 correct</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Stanine Classification</div>
+          <div class="metric-value" id="res-stanine">Stanine 5</div>
+          <div style="font-size:0.85rem; color:#5f6368;" id="res-stanine-desc">Average Achievement</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Time Elapsed</div>
+          <div class="metric-value" id="res-time">00:00</div>
+          <div style="font-size:0.85rem; color:#5f6368;">Total Test Time</div>
+        </div>
+      </div>
+
+      <h3 style="margin: 20px 0 12px 0; color:var(--primary);">Curriculum Strand Breakdown</h3>
+      <div id="strand-breakdown-container"></div>
+
+      <h3 style="margin: 24px 0 12px 0; color:var(--primary);">Item-by-Item Diagnostic Review</h3>
+      <div style="overflow-x: auto;">
+        <table class="review-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Strand</th>
+              <th>Your Answer</th>
+              <th>Correct Answer</th>
+              <th>Status</th>
+              <th>Mathematical Insight & Solution</th>
+            </tr>
+          </thead>
+          <tbody id="review-table-body"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:24px; display:flex; gap:12px; justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Report</button>
+        <button class="btn btn-primary" id="btn-export-csv">📥 Download CSV Payload</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * Live Google Apps Script Endpoint
+ */
+const backendScriptUrl = "https://script.google.com/macros/s/AKfycbx-upDbrHambxm3Ex1HcmKPdQ-Xs_9qzi_Ehe4jw3pKdE4_pGM5qG0L07NdaPEr4T89/exec";
+
+/**
+ * 30 Completely Original Questions (No overlap with reference images)
+ * Systematic Rotating Answer Key Cycle: 1st, 2nd, 3rd, 4th, 1st, 2nd...
+ */
+const questionsData = [
+  // --- PHASE 2 ALGEBRA & PATTERNS (Questions 1-6) ---
+  {
+    id: "Q01",
+    strand: "Number & Algebra (Phase 2)",
+    prompt: "Manaia makes a pattern using sticks: Shape 1 has 4 sticks, Shape 2 has 7 sticks, Shape 3 has 10 sticks. How many sticks will Shape 5 have?",
+    type: "none",
+    options: ["16 sticks", "13 sticks", "15 sticks", "19 sticks"], // Correct: 1st choice (16)
+    correctAnswer: "16 sticks",
+    insight: "The pattern adds 3 sticks per shape (+3 per step). Shape 5 has 4 + 4(3) = 16 sticks."
+  },
+  {
+    id: "Q02",
+    strand: "Number & Algebra (Phase 2)",
+    prompt: "Find the missing number in the box to make the equation true: 18 + ☐ = 42",
+    type: "none",
+    options: ["22", "24", "26", "28"], // Correct: 2nd choice (24)
+    correctAnswer: "24",
+    insight: "Subtract 18 from 42: 42 - 18 = 24."
+  },
+  {
+    id: "Q03",
+    strand: "Number & Algebra (Phase 2)",
+    prompt: "A balance scale has a mystery gift box 'g' and 6 coins on the left side, balancing 15 coins on the right side (g + 6 = 15). How many coins are inside box 'g'?",
+    type: "svg_static",
+    svgType: "balance_scale_g",
+    options: ["7 coins", "8 coins", "9 coins", "21 coins"], // Correct: 3rd choice (9)
+    correctAnswer: "9 coins",
+    insight: "Subtract 6 from 15: 15 - 6 = 9 coins."
+  },
+  {
+    id: "Q04",
+    strand: "Number & Algebra (Phase 2)",
+    prompt: "A repeating sequence follows the color pattern: 🟡 🟣 🟠 ⚪ 🟡 🟣 🟠 ⚪ ... What color will be in the 14th position?",
+    type: "none",
+    options: ["🟡 Yellow", "🟠 Orange", "⚪ White", "🟣 Purple"], // Correct: 4th choice (Purple)
+    correctAnswer: "🟣 Purple",
+    insight: "The pattern repeats every 4 items. 14 ÷ 4 = 3 remainder 2. The 2nd color in the cycle is Purple."
+  },
+  {
+    id: "Q05",
+    strand: "Number & Algebra (Phase 2)",
+    prompt: "What is the term-to-term rule for this number sequence: 5, 11, 17, 23, 29...",
+    type: "none",
+    options: ["Add 6", "Add 5", "Double and subtract 1", "Add 7"], // Correct: 1st choice (Add 6)
+    correctAnswer: "Add 6",
+    insight: "The constant difference between terms is 6 (11 - 5 = 6, 17 - 11 = 6)."
+  },
+  {
+    id: "Q06",
+    strand: "Number & Algebra (Phase 2)",
+    prompt: "An algebra machine triples the input number (× 3). If the machine output is 27, what was the input number?",
+    type: "svg_static",
+    svgType: "function_machine_triple",
+    options: ["7", "9", "81", "12"], // Correct: 2nd choice (9)
+    correctAnswer: "9",
+    insight: "Work backward using inverse operations: 27 ÷ 3 = 9."
+  },
+
+  // --- PHASE 3 ALGEBRA & PATTERNS (Questions 7-10) ---
+  {
+    id: "Q07",
+    strand: "Number & Algebra (Phase 3)",
+    prompt: "Kahu builds square tables: 1 table seats 4 people, 2 tables joined seat 6 people, 3 tables seat 8 people. Which rule gives the total people (P) seated at 'n' tables?",
+    type: "svg_static",
+    svgType: "table_pattern",
+    options: ["P = 4n", "P = 3n + 1", "P = 2n + 2", "P = n + 3"], // Correct: 3rd choice (P = 2n + 2)
+    correctAnswer: "P = 2n + 2",
+    insight: "The pattern increases by 2 seats for every table added. Rule: P = 2n + 2 (for n=1: 2(1)+2 = 4)."
+  },
+  {
+    id: "Q08",
+    strand: "Number & Algebra (Phase 3)",
+    prompt: "Solve the linear equation for y: 4y - 5 = 19",
+    type: "none",
+    options: ["5", "7", "8", "6"], // Correct: 4th choice (6)
+    correctAnswer: "6",
+    insight: "Add 5 to both sides: 4y = 24. Divide by 4: y = 6."
+  },
+  {
+    id: "Q09",
+    strand: "Number & Algebra (Phase 3)",
+    prompt: "Simplify the expression by combining like terms: 6p + 5q - 2p + 3q",
+    type: "none",
+    options: ["4p + 8q", "8p + 8q", "4p + 2q", "12pq"], // Correct: 1st choice (4p + 8q)
+    correctAnswer: "4p + 8q",
+    insight: "Group 'p' terms (6p - 2p = 4p) and 'q' terms (5q + 3q = 8q). Result: 4p + 8q."
+  },
+  {
+    id: "Q10",
+    strand: "Number & Algebra (Phase 3)",
+    prompt: "If x = 6 and y = 4, what is the value of 3x - 2y?",
+    type: "none",
+    options: ["8", "10", "14", "18"], // Correct: 2nd choice (10)
+    correctAnswer: "10",
+    insight: "Substitute x = 6 and y = 4: 3(6) - 2(4) = 18 - 8 = 10."
+  },
+
+  // --- CORE STRANDS & NEW DISTINCT MANIPULATIVES (Questions 11-30) ---
+  {
+    id: "Q11",
+    strand: "Measurement & Geometry",
+    prompt: "Click on all grid shapes that have an area of exactly 15 squares.",
+    type: "grid_multi_select",
+    targetArea: 15,
+    svgData: {
+      gridWidth: 14, gridHeight: 8,
+      shapes: [
+        { id: "Shape A", area: 15, path: "M 1,1 H 6 V 4 H 1 Z", fill: "#27ae60" },
+        { id: "Shape B", area: 12, path: "M 8,1 H 12 V 4 H 8 Z", fill: "#2980b9" },
+        { id: "Shape C", area: 15, path: "M 1,5 H 4 V 6 H 6 V 7 H 1 Z", fill: "#8e44ad" },
+        { id: "Shape D", area: 18, path: "M 8,5 H 14 V 8 H 8 Z", fill: "#d35400" }
+      ]
+    },
+    options: ["Shape A and Shape B", "Shape B and Shape D", "Shape A and Shape C", "Shape C and Shape D"], // Correct: 3rd choice
+    correctAnswer: "Shape A and Shape C",
+    insight: "Shape A (5×3 = 15) and Shape C (3×1 + 2×1 + 5×2 = 15) both measure exactly 15 grid squares."
+  },
+  {
+    id: "Q12",
+    strand: "Number & Algebra",
+    prompt: "Look at the number line. What decimal number is the vertical arrow pointing to halfway between 7.0 and 7.6?",
+    type: "svg_static",
+    svgType: "number_line_7",
+    options: ["7.15", "7.2", "7.25", "7.3"], // Correct: 4th choice (7.3)
+    correctAnswer: "7.3",
+    insight: "Midpoint between 7.0 and 7.6 is (7.0 + 7.6) ÷ 2 = 7.3."
+  },
+  {
+    id: "Q13",
+    strand: "Number & Algebra",
+    prompt: "Aroha has 15 apples to share equally into 3 baskets. Place the apples into 1 basket to find how many apples 1 basket receives.",
+    type: "drag_and_drop_apples",
+    totalItems: 15,
+    sharingGroups: 3,
+    options: ["5", "3", "4", "6"], // Correct: 1st choice (5)
+    correctAnswer: "5",
+    insight: "15 ÷ 3 = 5 apples per basket."
+  },
+  {
+    id: "Q14",
+    strand: "Measurement & Geometry",
+    prompt: "Nikau lays pavers around the edge of an 8 by 5 grid courtyard floor. The border takes 22 pavers. How many MORE pavers are needed to cover the empty middle section?",
+    type: "svg_static",
+    svgType: "paver_border_8x5",
+    options: ["15", "18", "20", "24"], // Correct: 2nd choice (18)
+    correctAnswer: "18",
+    insight: "Outer grid is 8 × 5 = 40. Inner unpaved area is (8 - 2) × (5 - 2) = 6 × 3 = 18 pavers."
+  },
+  {
+    id: "Q15",
+    strand: "Statistics",
+    prompt: "The bar graph shows votes for School Sports Day: Rugby (28), Netball (14), Basketball (22), Soccer (10). How many MORE students voted for Rugby than Netball?",
+    type: "svg_static",
+    svgType: "bar_chart_sports",
+    options: ["10", "12", "14", "16"], // Correct: 3rd choice (14)
+    correctAnswer: "14",
+    insight: "Rugby (28) minus Netball (14) = 28 - 14 = 14 students."
+  },
+  {
+    id: "Q16",
+    strand: "Number & Algebra",
+    prompt: "Hemi earned $84.00 for 4 hours of lawn mowing. At this rate, how much will Hemi earn for 6½ hours of work?",
+    type: "none",
+    options: ["$126.00", "$130.00", "$132.50", "$136.50"], // Correct: 4th choice ($136.50)
+    correctAnswer: "$136.50",
+    insight: "Hourly rate = $84 ÷ 4 = $21.00/hr. For 6.5 hours: 6.5 × $21.00 = $136.50."
+  },
+  {
+    id: "Q17",
+    strand: "Number & Algebra",
+    prompt: "Sione has $9.40 and Manaia has $4.60. How much money must Sione give to Manaia so they both have the EXACT SAME amount?",
+    type: "none",
+    options: ["$2.40", "$4.80", "$1.80", "$3.20"], // Correct: 1st choice ($2.40)
+    correctAnswer: "$2.40",
+    insight: "Total money = $9.40 + $4.60 = $14.00. Equal amount = $7.00 each. Sione gives $9.40 - $7.00 = $2.40."
+  },
+  {
+    id: "Q18",
+    strand: "Measurement & Geometry",
+    prompt: "A harakeke leaf strip is placed against a centimeter ruler starting at the 3.5 cm mark and ending at the 11.0 cm mark. How long is the leaf strip?",
+    type: "svg_static",
+    svgType: "offset_ruler_harakeke",
+    options: ["11.0 centimetres", "7.5 centimetres", "8.0 centimetres", "3.5 centimetres"], // Correct: 2nd choice (7.5 cm)
+    correctAnswer: "7.5 centimetres",
+    insight: "End mark minus start offset: 11.0 cm - 3.5 cm = 7.5 centimetres."
+  },
+  {
+    id: "Q19",
+    strand: "Number & Algebra",
+    prompt: "What is the exact sum of 0.8 + 0.7?",
+    type: "none",
+    options: ["0.15", "1.4", "1.5", "15"], // Correct: 3rd choice (1.5)
+    correctAnswer: "1.5",
+    insight: "8 tenths + 7 tenths = 15 tenths = 1.5."
+  },
+  {
+    id: "Q20",
+    strand: "Number & Algebra",
+    prompt: "Wiremu knows that 14 × 10 = 140. How can he use this known fact to quickly work out 14 × 20?",
+    type: "none",
+    options: ["140 + 10", "140 × 10", "140 + 20", "140 × 2"], // Correct: 4th choice (140 × 2)
+    correctAnswer: "140 × 2",
+    insight: "Since 20 is double 10 (20 = 2 × 10), 14 × 20 = (14 × 10) × 2 = 140 × 2."
+  },
+  {
+    id: "Q21",
+    strand: "Number & Algebra",
+    prompt: "A 100-grid has 35 squares shaded green. What fraction of the grid is shaded in SIMPLEST FORM?",
+    type: "none",
+    options: ["7/20", "35/100", "7/25", "3/10"], // Correct: 1st choice (7/20)
+    correctAnswer: "7/20",
+    insight: "35/100 divided by 5/5 = 7/20."
+  },
+  {
+    id: "Q22",
+    strand: "Measurement & Geometry",
+    prompt: "What is the perimeter of a rectangle with length 12 cm and width 7 cm?",
+    type: "none",
+    options: ["84 cm", "38 cm", "19 cm", "42 cm"], // Correct: 2nd choice (38 cm)
+    correctAnswer: "38 cm",
+    insight: "Perimeter = 2 × (length + width) = 2 × (12 + 7) = 2 × 19 = 38 cm."
+  },
+  {
+    id: "Q23",
+    strand: "Measurement & Geometry",
+    prompt: "Two angles lie on a straight line. If one angle measures 124°, what is the measure of the missing angle?",
+    type: "none",
+    options: ["46°", "66°", "56°", "124°"], // Correct: 3rd choice (56°)
+    correctAnswer: "56°",
+    insight: "Angles on a straight line sum to 180°. Missing angle = 180° - 124° = 56°."
+  },
+  {
+    id: "Q24",
+    strand: "Statistics",
+    prompt: "A bag contains 5 red, 3 blue, and 2 green marbles (10 total). What is the probability of drawing a RED marble?",
+    type: "none",
+    options: ["1/5", "3/10", "2/5", "1/2"], // Correct: 4th choice (1/2)
+    correctAnswer: "1/2",
+    insight: "P(Red) = 5 red marbles ÷ 10 total marbles = 5/10 = 1/2."
+  },
+  {
+    id: "Q25",
+    strand: "Number & Algebra",
+    prompt: "Tane buys lunch for $6.20, a drink for $2.50, and an apple for $1.10. If he pays with a $20 note, how much change does he receive?",
+    type: "none",
+    options: ["$10.20", "$9.80", "$10.80", "$11.20"], // Correct: 1st choice ($10.20)
+    correctAnswer: "$10.20",
+    insight: "Total cost = $6.20 + $2.50 + $1.10 = $9.80. Change = $20.00 - $9.80 = $10.20."
+  },
+  {
+    id: "Q26",
+    strand: "Measurement & Geometry",
+    prompt: "What is the area of a right-angled triangle with a base of 10 cm and a height of 7 cm?",
+    type: "none",
+    options: ["70 cm²", "35 cm²", "17 cm²", "34 cm²"], // Correct: 2nd choice (35 cm²)
+    correctAnswer: "35 cm²",
+    insight: "Area = ½ × base × height = ½ × 10 × 7 = 35 cm²."
+  },
+  {
+    id: "Q27",
+    strand: "Statistics",
+    prompt: "Find the median of this set of test scores: 11, 14, 15, 19, 23, 27, 30.",
+    type: "none",
+    options: ["15", "23", "19", "20"], // Correct: 3rd choice (19)
+    correctAnswer: "19",
+    insight: "The middle score in the ordered list of 7 scores is 19."
+  },
+  {
+    id: "Q28",
+    strand: "Number & Algebra",
+    prompt: "A train travels 90 km in 45 minutes. What is its average speed in kilometers per hour (km/h)?",
+    type: "none",
+    options: ["100 km/h", "110 km/h", "135 km/h", "120 km/h"], // Correct: 4th choice (120 km/h)
+    correctAnswer: "120 km/h",
+    insight: "45 minutes = 0.75 hours. Speed = 90 ÷ 0.75 = 120 km/h."
+  },
+  {
+    id: "Q29",
+    strand: "Measurement & Geometry",
+    prompt: "How many meters (m) are in 4.25 kilometers (km)?",
+    type: "none",
+    options: ["4250 m", "425 m", "42500 m", "42.5 m"], // Correct: 1st choice (4250 m)
+    correctAnswer: "4250 m",
+    insight: "1 km = 1000 m. 4.25 × 1000 = 4250 meters."
+  },
+  {
+    id: "Q30",
+    strand: "Number & Algebra",
+    prompt: "Simplify using order of operations (BEDMAS): 14 + 3 × (8 - 3)",
+    type: "none",
+    options: ["85", "29", "35", "41"], // Correct: 2nd choice (29)
+    correctAnswer: "29",
+    insight: "Parentheses first (8 - 3 = 5), then multiply (3 × 5 = 15), then add (14 + 15 = 29)."
+  }
+];
+
+// App State
+let state = {
+  studentName: "",
+  yearLevel: "",
+  sessionCode: "",
+  currentIndex: 0,
+  userAnswers: {},
+  startTime: null,
+  timerInterval: null
+};
+
+// DOM Elements
+const screens = {
+  reg: document.getElementById('registration-screen'),
+  assess: document.getElementById('assessment-screen'),
+  report: document.getElementById('report-screen')
+};
+
+// Form Listener
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  state.studentName = document.getElementById('student-name').value.trim();
+  state.yearLevel = document.getElementById('year-level').value;
+  state.sessionCode = document.getElementById('session-code').value.trim();
+
+  screens.reg.classList.add('hidden');
+  screens.assess.classList.remove('hidden');
+  document.getElementById('header-meta').classList.remove('hidden');
+  document.getElementById('student-tag').textContent = `${state.studentName} (${state.yearLevel})`;
+
+  state.startTime = new Date();
+  startTimer();
+  loadQuestion(0);
+});
+
+function startTimer() {
+  state.timerInterval = setInterval(() => {
+    const elapsedSec = Math.floor((new Date() - state.startTime) / 1000);
+    const m = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+    const s = String(elapsedSec % 60).padStart(2, '0');
+    document.getElementById('timer-display').textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function updateProgress() {
+  const current = state.currentIndex + 1;
+  const total = questionsData.length;
+  const pct = Math.round((current / total) * 100);
+
+  document.getElementById('progress-text').textContent = `Question ${current} of ${total}`;
+  document.getElementById('progress-pct-text').textContent = `${pct}% Complete`;
+  document.getElementById('progress-bar').style.width = `${pct}%`;
+  document.getElementById('q-number-label').textContent = `Question ${current} of ${total}`;
+
+  // Prev button control
+  document.getElementById('btn-prev').disabled = state.currentIndex === 0;
+
+  // Next / Submit button state (Disabled until answered)
+  const hasAnswer = state.userAnswers[state.currentIndex] !== undefined;
+  
+  if (state.currentIndex === total - 1) {
+    document.getElementById('btn-next').classList.add('hidden');
+    document.getElementById('btn-submit').classList.remove('hidden');
+    document.getElementById('btn-submit').disabled = !hasAnswer;
+  } else {
+    document.getElementById('btn-next').classList.remove('hidden');
+    document.getElementById('btn-submit').classList.add('hidden');
+    document.getElementById('btn-next').disabled = !hasAnswer;
+  }
+
+  document.getElementById('warning-msg').style.display = 'none';
+}
+
+function loadQuestion(index) {
+  state.currentIndex = index;
+  const q = questionsData[index];
+
+  document.getElementById('q-strand-label').textContent = q.strand;
+  document.getElementById('q-prompt-text').textContent = q.prompt;
+
+  renderCanvas(q);
+  renderOptions(q);
+  updateProgress();
+}
+
+function renderCanvas(q) {
+  const container = document.getElementById('canvas-container');
+  container.innerHTML = '';
+
+  if (q.type === 'grid_multi_select') {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 440 250");
+    svg.setAttribute("width", "440");
+
+    for (let x = 0; x <= 420; x += 30) {
+      const line = document.createElementNS(svgNS, "line");
+      line.setAttribute("x1", x + 10); line.setAttribute("y1", 10);
+      line.setAttribute("x2", x + 10); line.setAttribute("y2", 240);
+      line.setAttribute("stroke", "#e0e0e0"); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+    }
+    for (let y = 0; y <= 240; y += 30) {
+      const line = document.createElementNS(svgNS, "line");
+      line.setAttribute("x1", 10); line.setAttribute("y1", y + 10);
+      line.setAttribute("x2", 430); line.setAttribute("y2", y + 10);
+      line.setAttribute("stroke", "#e0e0e0"); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+    }
+
+    q.svgData.shapes.forEach(shape => {
+      const path = document.createElementNS(svgNS, "path");
+      path.setAttribute("d", shape.path.replace(/(\d+)/g, (m) => parseInt(m) * 30 + 10));
+      path.setAttribute("fill", shape.fill);
+      path.setAttribute("class", "grid-shape-selectable");
+
+      const text = document.createElementNS(svgNS, "text");
+      text.setAttribute("x", shape.id === "Shape A" ? 100 : shape.id === "Shape B" ? 310 : shape.id === "Shape C" ? 70 : 340);
+      text.setAttribute("y", shape.id === "Shape A" ? 70 : shape.id === "Shape B" ? 70 : shape.id === "Shape C" ? 195 : 195);
+      text.setAttribute("font-weight", "bold");
+      text.setAttribute("fill", "#fff");
+      text.setAttribute("text-anchor", "middle");
+      text.textContent = shape.id;
+      svg.appendChild(path);
+      svg.appendChild(text);
+    });
+
+    container.appendChild(svg);
+    container.style.display = "block";
+  } else if (q.type === 'drag_and_drop_apples') {
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; align-items:center; gap:14px;">
+        <div style="font-size:0.9rem; color:#5f6368;">Click apples to place them into 1 basket:</div>
+        <div id="apple-box" style="width:280px; min-height:90px; border:3px dashed var(--primary); border-radius:12px; background:rgba(15,76,129,0.05); padding:10px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center;">
+          <div style="font-weight:bold; color:var(--primary); width:100%; text-align:center;">🧺 Basket #1</div>
+        </div>
+        <div style="font-weight:600; color:var(--primary);">Basket count: <span id="apple-count">0</span> apples</div>
+        <div id="apple-pool" style="display:flex; gap:6px; flex-wrap:wrap; max-width:340px; justify-content:center;"></div>
+      </div>
+    `;
+
+    const pool = document.getElementById('apple-pool');
+    const box = document.getElementById('apple-box');
+    let count = 0;
+
+    const updateCount = (c) => {
+      count = c;
+      document.getElementById('apple-count').textContent = count;
+      const matchOpt = q.options.find(o => o === String(count));
+      if (matchOpt) {
+        state.userAnswers[state.currentIndex] = matchOpt;
+        renderOptions(q);
+        updateProgress();
+      }
+    };
+
+    for (let i = 0; i < q.totalItems; i++) {
+      const a = document.createElement('div');
+      a.style.cssText = "width:34px; height:34px; background:#e74c3c; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; color:white; font-size:16px; user-select:none;";
+      a.textContent = "🍎";
+      a.onclick = () => {
+        if (box.contains(a)) {
+          pool.appendChild(a);
+          updateCount(count - 1);
+        } else {
+          box.appendChild(a);
+          updateCount(count + 1);
+        }
+      };
+      pool.appendChild(a);
+    }
+    container.style.display = "block";
+  } else if (q.type === 'svg_static') {
+    container.innerHTML = getStaticSVG(q.svgType);
+    container.style.display = "block";
+  } else {
+    container.style.display = "none";
+  }
+}
+
+function getStaticSVG(type) {
+  if (type === 'balance_scale_g') {
+    return `
+      <svg viewBox="0 0 380 140" width="380">
+        <polygon points="190,80 170,120 210,120" fill="#7f8c8d"/>
+        <line x1="40" y1="80" x2="340" y2="80" stroke="#2c3e50" stroke-width="5"/>
+        <line x1="70" y1="80" x2="70" y2="105" stroke="#7f8c8d" stroke-width="2"/>
+        <rect x="35" y="105" width="70" height="8" fill="#34495e"/>
+        <rect x="40" y="75" width="28" height="28" fill="#8e44ad" rx="4"/>
+        <text x="54" y="94" font-weight="bold" fill="white" font-size="14" text-anchor="middle">g</text>
+        <circle cx="80" cy="98" r="5" fill="#f39c12"/>
+        <circle cx="92" cy="98" r="5" fill="#f39c12"/>
+        <circle cx="80" cy="86" r="5" fill="#f39c12"/>
+        <circle cx="92" cy="86" r="5" fill="#f39c12"/>
+        <circle cx="80" cy="74" r="5" fill="#f39c12"/>
+        <circle cx="92" cy="74" r="5" fill="#f39c12"/>
+
+        <line x1="310" y1="80" x2="310" y2="105" stroke="#7f8c8d" stroke-width="2"/>
+        <rect x="275" y="105" width="70" height="8" fill="#34495e"/>
+        <text x="310" y="96" font-size="15" font-weight="bold" fill="#27ae60" text-anchor="middle">15 coins</text>
+      </svg>
+    `;
+  }
+  if (type === 'function_machine_triple') {
+    return `
+      <svg viewBox="0 0 400 110" width="400">
+        <rect x="20" y="35" width="70" height="40" rx="6" fill="#e8f0fe" stroke="#0f4c81" stroke-width="2"/>
+        <text x="55" y="60" font-size="15" font-weight="bold" fill="#0f4c81" text-anchor="middle">Input ?</text>
+        <line x1="90" y1="55" x2="130" y2="55" stroke="#333" stroke-width="3"/>
+        
+        <rect x="130" y="25" width="140" height="60" rx="10" fill="#2980b9" stroke="#1b4f72" stroke-width="2"/>
+        <text x="200" y="60" font-size="16" font-weight="bold" fill="white" text-anchor="middle">TRIPLE (× 3)</text>
+        
+        <line x1="270" y1="55" x2="310" y2="55" stroke="#333" stroke-width="3"/>
+        <rect x="310" y="35" width="70" height="40" rx="6" fill="#fef9e7" stroke="#f39c12" stroke-width="2"/>
+        <text x="345" y="60" font-size="15" font-weight="bold" fill="#d35400" text-anchor="middle">27</text>
+      </svg>
+    `;
+  }
+  if (type === 'table_pattern') {
+    return `
+      <svg viewBox="0 0 400 90" width="400">
+        <rect x="30" y="25" width="40" height="40" fill="#3498db" stroke="#2980b9" stroke-width="2" rx="4"/>
+        <circle cx="50" cy="12" r="6" fill="#e74c3c"/>
+        <circle cx="50" cy="78" r="6" fill="#e74c3c"/>
+        <circle cx="17" cy="45" r="6" fill="#e74c3c"/>
+        <circle cx="83" cy="45" r="6" fill="#e74c3c"/>
+        <text x="50" y="88" font-size="10" text-anchor="middle">1 Table = 4 Seats</text>
+
+        <rect x="150" y="25" width="80" height="40" fill="#3498db" stroke="#2980b9" stroke-width="2" rx="4"/>
+        <circle cx="170" cy="12" r="6" fill="#e74c3c"/>
+        <circle cx="210" cy="12" r="6" fill="#e74c3c"/>
+        <circle cx="170" cy="78" r="6" fill="#e74c3c"/>
+        <circle cx="210" cy="78" r="6" fill="#e74c3c"/>
+        <circle cx="137" cy="45" r="6" fill="#e74c3c"/>
+        <circle cx="243" cy="45" r="6" fill="#e74c3c"/>
+        <text x="190" y="88" font-size="10" text-anchor="middle">2 Tables = 6 Seats</text>
+
+        <rect x="290" y="25" width="100" height="40" fill="#3498db" stroke="#2980b9" stroke-width="2" rx="4"/>
+        <text x="340" y="48" fill="white" font-size="12" font-weight="bold" text-anchor="middle">3 Tables</text>
+      </svg>
+    `;
+  }
+  if (type === 'number_line_7') {
+    return `
+      <svg viewBox="0 0 440 90" width="440">
+        <line x1="30" y1="45" x2="410" y2="45" stroke="#333" stroke-width="3"/>
+        <line x1="50" y1="30" x2="50" y2="60" stroke="#333" stroke-width="3"/>
+        <text x="50" y="80" font-size="16" font-weight="bold" text-anchor="middle">7.0</text>
+        <line x1="390" y1="30" x2="390" y2="60" stroke="#333" stroke-width="3"/>
+        <text x="390" y="80" font-size="16" font-weight="bold" text-anchor="middle">7.6</text>
+        
+        <line x1="220" y1="30" x2="220" y2="60" stroke="#d93025" stroke-width="3"/>
+        <path d="M 220,15 L 212,30 L 228,30 Z" fill="#d93025"/>
+      </svg>
+    `;
+  }
+  if (type === 'paver_border_8x5') {
+    return `
+      <svg viewBox="0 0 360 210" width="360">
+        ${Array.from({length: 5}).map((_, r) => 
+          Array.from({length: 8}).map((_, c) => {
+            const isBorder = r === 0 || r === 4 || c === 0 || c === 7;
+            return `<rect x="${c*40 + 20}" y="${r*38 + 10}" width="36" height="34" rx="4" 
+                    fill="${isBorder ? '#d35400' : '#ffffff'}" stroke="${isBorder ? '#a04000' : '#bdc3c7'}" stroke-width="2"/>`;
+          }).join('')
+        ).join('')}
+      </svg>
+    `;
+  }
+  if (type === 'bar_chart_sports') {
+    return `
+      <svg viewBox="0 0 420 190" width="420">
+        <line x1="40" y1="20" x2="40" y2="150" stroke="#333" stroke-width="2"/>
+        <line x1="40" y1="150" x2="400" y2="150" stroke="#333" stroke-width="2"/>
+        
+        <rect x="60" y="30" width="55" height="120" fill="#27ae60"/>
+        <text x="87" y="170" font-size="11" font-weight="bold" text-anchor="middle">Rugby (28)</text>
+
+        <rect x="145" y="90" width="55" height="60" fill="#2980b9"/>
+        <text x="172" y="170" font-size="11" font-weight="bold" text-anchor="middle">Netball (14)</text>
+
+        <rect x="230" y="55" width="55" height="95" fill="#f39c12"/>
+        <text x="257" y="170" font-size="11" font-weight="bold" text-anchor="middle">Basketball (22)</text>
+
+        <rect x="315" y="108" width="55" height="42" fill="#8e44ad"/>
+        <text x="342" y="170" font-size="11" font-weight="bold" text-anchor="middle">Soccer (10)</text>
+      </svg>
+    `;
+  }
+  if (type === 'offset_ruler_harakeke') {
+    return `
+      <svg viewBox="0 0 480 120" width="480">
+        <rect x="20" y="50" width="440" height="50" fill="#ecf0f1" stroke="#7f8c8d" stroke-width="2"/>
+        ${Array.from({length: 15}).map((_, i) => `
+          <line x1="${i*28 + 30}" y1="50" x2="${i*28 + 30}" y2="70" stroke="#2c3e50" stroke-width="2"/>
+          <text x="${i*28 + 30}" y="90" font-size="11" text-anchor="middle">${i}</text>
+        `).join('')}
+        <rect x="128" y="15" width="210" height="25" rx="5" fill="#27ae60" stroke="#1e8449" stroke-width="2"/>
+        <line x1="128" y1="40" x2="128" y2="50" stroke="#d93025" stroke-dasharray="3,3" stroke-width="2"/>
+        <line x1="338" y1="40" x2="338" y2="50" stroke="#d93025" stroke-dasharray="3,3" stroke-width="2"/>
+      </svg>
+    `;
+  }
+  return '';
+}
+
+function renderOptions(q) {
+  const container = document.getElementById('options-container');
+  container.innerHTML = '';
+
+  q.options.forEach(opt => {
+    const btn = document.createElement('div');
+    const isSelected = state.userAnswers[state.currentIndex] === opt;
+    btn.className = `option-btn ${isSelected ? 'selected' : ''}`;
+    btn.innerHTML = `<div class="option-radio"></div><span>${opt}</span>`;
+    btn.onclick = () => {
+      state.userAnswers[state.currentIndex] = opt;
+      renderOptions(q);
+      updateProgress();
+    };
+    container.appendChild(btn);
+  });
+}
+
+// Navigation Listeners
+document.getElementById('btn-prev').onclick = () => {
+  if (state.currentIndex > 0) loadQuestion(state.currentIndex - 1);
+};
+
+document.getElementById('btn-next').onclick = () => {
+  if (state.userAnswers[state.currentIndex] === undefined) {
+    document.getElementById('warning-msg').style.display = 'block';
+    return;
+  }
+  if (state.currentIndex < questionsData.length - 1) {
+    loadQuestion(state.currentIndex + 1);
+  }
+};
+
+// Text-to-Speech
+document.getElementById('btn-read-aloud').onclick = () => {
+  const q = questionsData[state.currentIndex];
+  const text = `${q.prompt}. Options are: ${q.options.join(', ')}`;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.9;
+  window.speechSynthesis.speak(utterance);
+};
+
+// Submit Assessment
+document.getElementById('btn-submit').onclick = () => {
+  if (state.userAnswers[state.currentIndex] === undefined) {
+    document.getElementById('warning-msg').style.display = 'block';
+    return;
+  }
+  if (confirm("Are you ready to submit your assessment?")) {
+    clearInterval(state.timerInterval);
+    generateReport();
+  }
+};
+
+function generateReport() {
+  screens.assess.classList.add('hidden');
+  screens.report.classList.remove('hidden');
+
+  let correctCount = 0;
+  const strandStats = {};
+  const reviewBody = document.getElementById('review-table-body');
+  reviewBody.innerHTML = '';
+
+  questionsData.forEach((q, idx) => {
+    const userAns = state.userAnswers[idx] || "Not Answered";
+    const isCorrect = userAns === q.correctAnswer;
+
+    if (isCorrect) correctCount++;
+
+    const baseStrand = q.strand.split(' (')[0];
+    if (!strandStats[baseStrand]) strandStats[baseStrand] = { total: 0, correct: 0 };
+    strandStats[baseStrand].total++;
+    if (isCorrect) strandStats[baseStrand].correct++;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${q.id}</strong></td>
+      <td>${q.strand}</td>
+      <td class="${isCorrect ? 'badge-correct' : 'badge-incorrect'}">${userAns}</td>
+      <td><strong>${q.correctAnswer}</strong></td>
+      <td>${isCorrect ? '✅ Correct' : '❌ Incorrect'}</td>
+      <td style="font-size:0.85rem; color:#333;">${q.insight}</td>
+    `;
+    reviewBody.appendChild(tr);
+  });
+
+  const pct = Math.round((correctCount / questionsData.length) * 100);
+  document.getElementById('res-score-pct').textContent = `${pct}%`;
+  document.getElementById('res-score-raw').textContent = `${correctCount} / ${questionsData.length} correct`;
+
+  // Calibrated Stanine Score (Years 7 & 8)
+  let stanine = 1;
+  let stanineDesc = "Very Low Achievement";
+  if (pct >= 94) { stanine = 9; stanineDesc = "Very High / Outstanding"; }
+  else if (pct >= 84) { stanine = 8; stanineDesc = "High Achievement"; }
+  else if (pct >= 74) { stanine = 7; stanineDesc = "Above Average"; }
+  else if (pct >= 60) { stanine = 6; stanineDesc = "High Average"; }
+  else if (pct >= 46) { stanine = 5; stanineDesc = "Average Achievement"; }
+  else if (pct >= 32) { stanine = 4; stanineDesc = "Low Average"; }
+  else if (pct >= 20) { stanine = 3; stanineDesc = "Below Average"; }
+  else if (pct >= 10) { stanine = 2; stanineDesc = "Low Achievement"; }
+
+  document.getElementById('res-stanine').textContent = `Stanine ${stanine}`;
+  document.getElementById('res-stanine-desc').textContent = stanineDesc;
+  document.getElementById('res-time').textContent = document.getElementById('timer-display').textContent;
+
+  // Render Strand Breakdown
+  const strandContainer = document.getElementById('strand-breakdown-container');
+  strandContainer.innerHTML = '';
+  Object.keys(strandStats).forEach(s => {
+    const data = strandStats[s];
+    const sPct = Math.round((data.correct / data.total) * 100);
+    const div = document.createElement('div');
+    div.className = 'strand-row';
+    div.innerHTML = `
+      <div class="strand-info"><span>${s}</span><span>${data.correct}/${data.total} (${sPct}%)</span></div>
+      <div class="strand-bar-bg"><div class="strand-bar-fill" style="width: ${sPct}%"></div></div>
+    `;
+    strandContainer.appendChild(div);
+  });
+
+  postToGoogleBackend(pct, correctCount);
+}
+
+function postToGoogleBackend(pct, correctCount) {
+  const payload = {
+    studentName: state.studentName,
+    yearLevel: state.yearLevel,
+    sessionCode: state.sessionCode,
+    scorePct: pct,
+    correctCount: correctCount,
+    totalQuestions: questionsData.length,
+    items: questionsData.map((q, idx) => ({
+      questionId: q.id,
+      strand: q.strand,
+      selectedAnswer: state.userAnswers[idx] || "Not Answered",
+      correctAnswer: q.correctAnswer,
+      isCorrect: (state.userAnswers[idx] === q.correctAnswer),
+      diagnosticFeedback: q.insight
+    }))
+  };
+
+  fetch(backendScriptUrl, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  }).then(() => {
+    console.log("Submitted payload asynchronously to Google Apps Script.");
+  }).catch(err => {
+    console.error("Backend submission error:", err);
+  });
+}
+
+// Download CSV Handler
+document.getElementById('btn-export-csv').onclick = () => {
+  let csv = "Timestamp,Student Name,Year Level,Question ID,Strand,Selected Answer,Correct Answer,Is Correct,Score (%),Diagnostic Feedback\n";
+  const now = new Date().toISOString();
+  const pct = Math.round((Object.keys(state.userAnswers).filter(idx => state.userAnswers[idx] === questionsData[idx].correctAnswer).length / questionsData.length) * 100);
+
+  questionsData.forEach((q, idx) => {
+    const userAns = state.userAnswers[idx] || "Not Answered";
+    const isCorrect = userAns === q.correctAnswer;
+    csv += `"${now}","${state.studentName}","${state.yearLevel}","${q.id}","${q.strand}","${userAns}","${q.correctAnswer}","${isCorrect}","${pct}%","${q.insight.replace(/"/g, '""')}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'type/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `NZ_Math_Assessment_${state.studentName.replace(/\s+/g, '_')}.csv`;
+  a.click();
+};
+</script>
+</body>
+</html>
